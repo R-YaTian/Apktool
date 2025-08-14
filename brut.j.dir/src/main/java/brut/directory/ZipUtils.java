@@ -50,6 +50,7 @@ public final class ZipUtils {
 
     public static void zipDir(File baseDir, String dirName, ZipOutputStream out, Collection<String> doNotCompress)
             throws IOException {
+        out.setLevel(9);
         File dir;
         if (dirName == null || dirName.isEmpty()) {
             dir = baseDir;
