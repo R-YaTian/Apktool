@@ -427,6 +427,7 @@ public class ApkBuilder {
         LOGGER.info("Building apk file...");
         try (ZipOutputStream out = new ZipOutputStream(Files.newOutputStream(outApk.toPath()))) {
             // zip aapt output files
+            out.setLevel(9);
             ZipUtils.zipDir(outDir, out, doNotCompress);
 
             // zip standard raw files
