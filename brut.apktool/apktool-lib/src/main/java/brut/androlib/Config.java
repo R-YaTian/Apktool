@@ -17,10 +17,10 @@
 package brut.androlib;
 
 public class Config {
-    public enum DecodeSources { NONE, FULL, ONLY_MAIN_CLASSES }
-    public enum DecodeResources { NONE, FULL, ONLY_MANIFEST }
-    public enum DecodeResolve { REMOVE, DUMMY, KEEP }
-    public enum DecodeAssets { NONE, FULL }
+    public enum DecodeSources { FULL, ONLY_MAIN_CLASSES, NONE }
+    public enum DecodeResources { FULL, ONLY_MANIFEST, NONE }
+    public enum DecodeResolve { DEFAULT, GREEDY, LAZY }
+    public enum DecodeAssets { FULL, NONE }
 
     private final String mVersion;
 
@@ -38,6 +38,7 @@ public class Config {
     private DecodeResources mDecodeResources;
     private DecodeResolve mDecodeResolve;
     private boolean mKeepBrokenResources;
+    private boolean mIgnoreRawValues;
     private boolean mAnalysisMode;
     private DecodeAssets mDecodeAssets;
 
@@ -61,11 +62,12 @@ public class Config {
         mVerbose = false;
 
         // Decode options
-        mDecodeSources = DecodeSources.FULL;
+        mDecodeSources = DecodeSources.ONLY_MAIN_CLASSES;
         mBaksmaliDebugMode = true;
         mDecodeResources = DecodeResources.FULL;
-        mDecodeResolve = DecodeResolve.REMOVE;
+        mDecodeResolve = DecodeResolve.DEFAULT;
         mKeepBrokenResources = false;
+        mIgnoreRawValues = false;
         mAnalysisMode = false;
         mDecodeAssets = DecodeAssets.FULL;
 
@@ -134,8 +136,12 @@ public class Config {
 
     // Decode options
 
-    public DecodeSources getDecodeSources() {
-        return mDecodeSources;
+    public boolean isDecodeSourcesFull() {
+        return mDecodeSources == DecodeSources.FULL;
+    }
+
+    public boolean isDecodeSourcesNone() {
+        return mDecodeSources == DecodeSources.NONE;
     }
 
     public void setDecodeSources(DecodeSources decodeSources) {
@@ -151,8 +157,12 @@ public class Config {
         mBaksmaliDebugMode = baksmaliDebugMode;
     }
 
-    public DecodeResources getDecodeResources() {
-        return mDecodeResources;
+    public boolean isDecodeResourcesFull() {
+        return mDecodeResources == DecodeResources.FULL;
+    }
+
+    public boolean isDecodeResourcesNone() {
+        return mDecodeResources == DecodeResources.NONE;
     }
 
     public void setDecodeResources(DecodeResources decodeResources) {
@@ -160,8 +170,12 @@ public class Config {
         mDecodeResources = decodeResources;
     }
 
-    public DecodeResolve getDecodeResolve() {
-        return mDecodeResolve;
+    public boolean isDecodeResolveLazy() {
+        return mDecodeResolve == DecodeResolve.LAZY;
+    }
+
+    public boolean isDecodeResolveGreedy() {
+        return mDecodeResolve == DecodeResolve.GREEDY;
     }
 
     public void setDecodeResolve(DecodeResolve decodeResolve) {
@@ -177,6 +191,14 @@ public class Config {
         mKeepBrokenResources = keepBrokenResources;
     }
 
+    public boolean isIgnoreRawValues() {
+        return mIgnoreRawValues;
+    }
+
+    public void setIgnoreRawValues(boolean ignoreRawValues) {
+        mIgnoreRawValues = ignoreRawValues;
+    }
+
     public boolean isAnalysisMode() {
         return mAnalysisMode;
     }
@@ -185,8 +207,12 @@ public class Config {
         mAnalysisMode = analysisMode;
     }
 
-    public DecodeAssets getDecodeAssets() {
-        return mDecodeAssets;
+    public boolean isDecodeAssetsFull() {
+        return mDecodeAssets == DecodeAssets.FULL;
+    }
+
+    public boolean isDecodeAssetsNone() {
+        return mDecodeAssets == DecodeAssets.NONE;
     }
 
     public void setDecodeAssets(DecodeAssets decodeAssets) {

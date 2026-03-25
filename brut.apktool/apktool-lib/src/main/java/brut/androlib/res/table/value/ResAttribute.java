@@ -20,49 +20,48 @@ import brut.androlib.exceptions.AndrolibException;
 import brut.androlib.res.table.ResEntry;
 import brut.androlib.res.table.ResId;
 import brut.androlib.res.table.ResPackage;
-import brut.androlib.res.xml.ResXmlEncodable;
-import brut.androlib.res.xml.ValuesXmlSerializable;
-import com.google.common.primitives.Ints;
+import brut.androlib.res.xml.ResStringEncoder;
+import brut.common.Log;
 import org.xmlpull.v1.XmlSerializer;
 
 import java.io.IOException;
 import java.util.Objects;
-import java.util.logging.Logger;
 
-public class ResAttribute extends ResBag implements ValuesXmlSerializable {
-    private static final Logger LOGGER = Logger.getLogger(ResAttribute.class.getName());
+public class ResAttribute extends ResBag {
+    private static final String TAG = ResAttribute.class.getName();
 
     private static final int ATTR_TYPE = 0x01000000;
     private static final int ATTR_MIN = 0x01000001;
     private static final int ATTR_MAX = 0x01000002;
     private static final int ATTR_L10N = 0x01000003;
 
-    private static final int TYPE_ANY = 0x0000FFFF;
-    private static final int TYPE_REFERENCE = 1 << 0; // 0x01
-    private static final int TYPE_STRING = 1 << 1; // 0x02
-    private static final int TYPE_INT = 1 << 2; // 0x04
-    private static final int TYPE_BOOL = 1 << 3; // 0x08
-    private static final int TYPE_COLOR = 1 << 4; // 0x10
-    private static final int TYPE_FLOAT = 1 << 5; // 0x20
-    private static final int TYPE_DIMEN = 1 << 6; // 0x40
-    private static final int TYPE_FRACTION = 1 << 7; // 0x80
-    private static final int TYPE_ENUM = 1 << 16; // 0x00010000
-    private static final int TYPE_FLAGS = 1 << 17; // 0x00020000
+    public static final int ATTR_TYPE_ANY = 0x0000FFFF;
+    public static final int ATTR_TYPE_REFERENCE = 1 << 0; // 0x01
+    public static final int ATTR_TYPE_STRING = 1 << 1; // 0x02
+    public static final int ATTR_TYPE_INTEGER = 1 << 2; // 0x04
+    public static final int ATTR_TYPE_BOOLEAN = 1 << 3; // 0x08
+    public static final int ATTR_TYPE_COLOR = 1 << 4; // 0x10
+    public static final int ATTR_TYPE_FLOAT = 1 << 5; // 0x20
+    public static final int ATTR_TYPE_DIMENSION = 1 << 6; // 0x40
+    public static final int ATTR_TYPE_FRACTION = 1 << 7; // 0x80
+    public static final int ATTR_TYPE_ENUM = 1 << 16; // 0x00010000
+    public static final int ATTR_TYPE_FLAGS = 1 << 17; // 0x00020000
 
-    private static final int L10N_NOT_REQUIRED = 0;
-    private static final int L10N_SUGGESTED = 1;
-
-    private static final int[] TYPE_MASKS = {
-        TYPE_STRING, TYPE_INT, TYPE_BOOL, TYPE_COLOR, TYPE_FLOAT, TYPE_DIMEN, TYPE_FRACTION, TYPE_REFERENCE
+    private static final int[] ATTR_TYPE_MASKS = {
+        ATTR_TYPE_STRING, ATTR_TYPE_INTEGER, ATTR_TYPE_BOOLEAN, ATTR_TYPE_COLOR, ATTR_TYPE_FLOAT,
+        ATTR_TYPE_DIMENSION, ATTR_TYPE_FRACTION, ATTR_TYPE_REFERENCE
     };
-    private static final String[] TYPE_FORMATS = {
+    private static final String[] ATTR_TYPE_NAMES = {
         "string", "integer", "boolean", "color", "float", "dimension", "fraction", "reference"
     };
 
-    public static final ResAttribute DEFAULT = new ResAttribute(
-        null, TYPE_ANY, Integer.MIN_VALUE, Integer.MAX_VALUE, L10N_NOT_REQUIRED);
+    private static final int ATTR_L10N_NOT_REQUIRED = 0;
+    private static final int ATTR_L10N_SUGGESTED = 1;
 
-    protected final int mType;
+    public static final ResAttribute DEFAULT = new ResAttribute(
+        null, ATTR_TYPE_ANY, Integer.MIN_VALUE, Integer.MAX_VALUE, ATTR_L10N_NOT_REQUIRED);
+
+    protected int mType; // might be updated later
     protected final int mMin;
     protected final int mMax;
     protected final int mL10n;
@@ -76,10 +75,10 @@ public class ResAttribute extends ResBag implements ValuesXmlSerializable {
     }
 
     public static ResAttribute parse(ResReference parent, RawItem[] rawItems) {
-        int type = TYPE_ANY;
+        int type = ATTR_TYPE_ANY;
         int min = Integer.MIN_VALUE;
         int max = Integer.MAX_VALUE;
-        int l10n = L10N_NOT_REQUIRED;
+        int l10n = ATTR_L10N_NOT_REQUIRED;
 
         int i = 0, n = rawItems.length;
         for (; i < n; i++) {
@@ -112,8 +111,7 @@ public class ResAttribute extends ResBag implements ValuesXmlSerializable {
 
         for (int j = 0; i < n; i++, j++) {
             RawItem rawItem = rawItems[i];
-            // The name of the symbol as a reference to a generated
-            // ID resource value.
+            // The name of the symbol as a reference to a generated ID resource value.
             int nameId = rawItem.getKey();
             ResReference name = new ResReference(pkg, ResId.of(nameId));
             ResPrimitive value = (ResPrimitive) rawItem.getValue();
@@ -121,12 +119,12 @@ public class ResAttribute extends ResBag implements ValuesXmlSerializable {
             symbols[j] = new Symbol(name, value);
         }
 
-        if ((type & TYPE_ENUM) != 0) {
+        if ((type & ATTR_TYPE_ENUM) != 0) {
             return new ResEnum(parent, type, min, max, l10n, symbols);
-        } else if ((type & TYPE_FLAGS) != 0) {
+        } else if ((type & ATTR_TYPE_FLAGS) != 0) {
             return new ResFlags(parent, type, min, max, l10n, symbols);
         } else {
-            LOGGER.warning(String.format("Invalid attribute type: 0x%08x", type));
+            Log.w(TAG, "Invalid attribute type: 0x%08x", type);
             return new ResAttribute(parent, type, min, max, l10n);
         }
     }
@@ -136,6 +134,7 @@ public class ResAttribute extends ResBag implements ValuesXmlSerializable {
         private final ResPrimitive mValue;
 
         public Symbol(ResReference key, ResPrimitive value) {
+            assert key != null && value != null;
             mKey = key;
             mValue = value;
         }
@@ -149,43 +148,84 @@ public class ResAttribute extends ResBag implements ValuesXmlSerializable {
         }
     }
 
-    public String formatValue(ResItem value, boolean asTextNode) throws AndrolibException {
-        if (!(value instanceof ResXmlEncodable)) {
-            return null;
+    public void addValueType(int valueType) {
+        if ((mType & ATTR_TYPE_ANY) == ATTR_TYPE_ANY) {
+            return;
         }
+        switch (valueType) {
+            case TYPE_NULL:
+            case TYPE_REFERENCE:
+            case TYPE_DYNAMIC_REFERENCE:
+            case TYPE_ATTRIBUTE:
+            case TYPE_DYNAMIC_ATTRIBUTE:
+                mType |= ATTR_TYPE_REFERENCE;
+                return;
+            case TYPE_STRING:
+                mType |= ATTR_TYPE_STRING;
+                return;
+            case TYPE_FLOAT:
+                mType |= ATTR_TYPE_FLOAT;
+                return;
+            case TYPE_DIMENSION:
+                mType |= ATTR_TYPE_DIMENSION;
+                return;
+            case TYPE_FRACTION:
+                mType |= ATTR_TYPE_FRACTION;
+                return;
+            case TYPE_INT_BOOLEAN:
+                mType |= ATTR_TYPE_BOOLEAN;
+                return;
+            default:
+                if (valueType >= TYPE_FIRST_COLOR_INT && valueType <= TYPE_LAST_COLOR_INT) {
+                    mType |= ATTR_TYPE_COLOR;
+                } else if (valueType >= TYPE_FIRST_INT && valueType <= TYPE_LAST_INT) {
+                    mType |= ATTR_TYPE_INTEGER;
+                }
+                return;
+        }
+    }
 
-        String formatted = formatValueToSymbols(value);
+    public boolean hasSymbolsForValue(ResItem value) {
+        return getSymbolsForValue(value) != null;
+    }
+
+    protected Symbol[] getSymbolsForValue(ResItem value) {
+        // Stub for attribute types with symbols.
+        return null;
+    }
+
+    public String formatAsTextValue(ResItem value) throws AndrolibException {
+        return formatValue(value, false);
+    }
+
+    public String formatAsAttributeValue(ResItem value) throws AndrolibException {
+        return formatValue(value, true);
+    }
+
+    private String formatValue(ResItem value, boolean asAttrValue) throws AndrolibException {
+        String formatted = formatValueFromSymbols(value);
         if (formatted != null) {
             return formatted;
         }
 
-        formatted = asTextNode
-            ? ((ResXmlEncodable) value).encodeAsResXmlValue()
-            : ((ResXmlEncodable) value).encodeAsResXmlAttrValue();
-        if (formatted == null || formatted.isEmpty()) {
-            return formatted;
+        // Ensure strings are escaped for attribute values according to the attribute type.
+        if (asAttrValue && value instanceof ResString) {
+            CharSequence strValue = ((ResString) value).getValue();
+            return ResStringEncoder.encodeAttributeValue(strValue, mType);
         }
 
-        // If the value is encoded as a string and the attribute also accepts
-        // integers, then if the decoded string is ambiguous, force it back
-        // to a string by prepending a backslash.
-        if (value instanceof ResString && (mType & TYPE_INT) != 0
-                && Ints.tryParse(formatted.trim()) != null) {
-            formatted = "\\" + formatted;
-        }
-
-        return formatted;
+        return asAttrValue ? value.toXmlAttributeValue() : value.toXmlTextValue();
     }
 
-    protected String formatValueToSymbols(ResItem value) throws AndrolibException {
+    protected String formatValueFromSymbols(ResItem value) throws AndrolibException {
         // Stub for attribute types with symbols.
         return null;
     }
 
     @Override
-    public void serializeToValuesXml(XmlSerializer serial, ResEntry entry)
-            throws AndrolibException, IOException {
-        serial.startTag(null, "attr");
+    public void serializeToValuesXml(XmlSerializer serial, ResEntry entry) throws AndrolibException, IOException {
+        String tagName = "attr";
+        serial.startTag(null, tagName);
         serial.attribute(null, "name", entry.getName());
         String format = renderFormat();
         if (format != null) {
@@ -197,24 +237,24 @@ public class ResAttribute extends ResBag implements ValuesXmlSerializable {
         if (mMax != Integer.MAX_VALUE) {
             serial.attribute(null, "max", Integer.toString(mMax));
         }
-        if (mL10n == L10N_SUGGESTED) {
+        if (mL10n == ATTR_L10N_SUGGESTED) {
             serial.attribute(null, "localization", "suggested");
         }
         serializeSymbolsToValuesXml(serial, entry);
-        serial.endTag(null, "attr");
+        serial.endTag(null, tagName);
     }
 
     private String renderFormat() {
-        if ((mType & TYPE_ANY) == TYPE_ANY) {
+        if ((mType & ATTR_TYPE_ANY) == ATTR_TYPE_ANY) {
             return null;
         }
         StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < TYPE_MASKS.length; i++) {
-            if ((mType & TYPE_MASKS[i]) != 0) {
+        for (int i = 0; i < ATTR_TYPE_MASKS.length; i++) {
+            if ((mType & ATTR_TYPE_MASKS[i]) != 0) {
                 if (sb.length() > 0) {
                     sb.append('|');
                 }
-                sb.append(TYPE_FORMATS[i]);
+                sb.append(ATTR_TYPE_NAMES[i]);
             }
         }
         if (sb.length() == 0) {
@@ -230,8 +270,7 @@ public class ResAttribute extends ResBag implements ValuesXmlSerializable {
 
     @Override
     public String toString() {
-        return String.format("ResAttribute{parent=%s, type=0x%04x, min=%d, max=%d, l10n=%d}",
-            mParent, mType, mMin, mMax, mL10n);
+        return String.format("ResAttribute{type=0x%04x, min=%s, max=%s, l10n=%s}", mType, mMin, mMax, mL10n);
     }
 
     @Override
@@ -241,17 +280,16 @@ public class ResAttribute extends ResBag implements ValuesXmlSerializable {
         }
         if (obj instanceof ResAttribute) {
             ResAttribute other = (ResAttribute) obj;
-            return Objects.equals(mParent, other.mParent)
-                    && mType == other.mType
-                    && mMin == other.mMin
-                    && mMax == other.mMax
-                    && mL10n == other.mL10n;
+            return mType == other.mType
+                && mMin == other.mMin
+                && mMax == other.mMax
+                && mL10n == other.mL10n;
         }
         return false;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(mParent, mType, mMin, mMax, mL10n);
+        return Objects.hash(mType, mMin, mMax, mL10n);
     }
 }

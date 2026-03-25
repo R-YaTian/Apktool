@@ -63,9 +63,8 @@ public final class YamlStringEscapeUtils {
         if (str == null) {
             return;
         }
-        int sz;
-        sz = str.length();
-        for (int i = 0; i < sz; i++) {
+        int len = str.length();
+        for (int i = 0; i < len; i++) {
             char ch = str.charAt(i);
             // "[^\t\n\r\u0020-\u007E\u0085\u00A0-\uD7FF\uE000-\uFFFD]"
             // handle unicode
@@ -77,10 +76,6 @@ public final class YamlStringEscapeUtils {
                 writer.write("\\u00" + CharSequenceTranslator.hex(ch));
             } else if (ch < 0x20) {
                 switch (ch) {
-                    case '\t' :
-                        writer.write('\\');
-                        writer.write('t');
-                        break;
                     case '\n' :
                         writer.write('\\');
                         writer.write('n');
@@ -88,6 +83,10 @@ public final class YamlStringEscapeUtils {
                     case '\r' :
                         writer.write('\\');
                         writer.write('r');
+                        break;
+                    case '\t' :
+                        writer.write('\\');
+                        writer.write('t');
                         break;
                     default :
                         if (ch > 0x0F) {

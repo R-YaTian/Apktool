@@ -16,14 +16,32 @@
  */
 package brut.androlib.res.table;
 
+import brut.androlib.res.table.value.ResItem;
+import com.google.common.collect.Sets;
+
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 public class ResTypeSpec {
+    private static final Map<String, Set<String>> STANDARD_TYPE_FORMATS = new HashMap<>();
+    static {
+        STANDARD_TYPE_FORMATS.put("bool", Sets.newHashSet("boolean"));
+        STANDARD_TYPE_FORMATS.put("color", Sets.newHashSet("color"));
+        STANDARD_TYPE_FORMATS.put("dimen", Sets.newHashSet("float", "fraction", "dimension"));
+        STANDARD_TYPE_FORMATS.put("drawable", Sets.newHashSet("color"));
+        STANDARD_TYPE_FORMATS.put("fraction", Sets.newHashSet("float", "fraction", "dimension"));
+        STANDARD_TYPE_FORMATS.put("integer", Sets.newHashSet("integer"));
+        STANDARD_TYPE_FORMATS.put("string", Sets.newHashSet("string"));
+    }
+
     private final ResPackage mPackage;
     private final int mId;
     private final String mName;
 
     public ResTypeSpec(ResPackage pkg, int id, String name) {
+        assert pkg != null && id > 0 && name != null;
         mPackage = pkg;
         mId = id;
         mName = name;
@@ -54,10 +72,26 @@ public class ResTypeSpec {
         }
     }
 
+    public boolean isValueCompatible(ResItem value) {
+        // Bag types don't support item values.
+        if (isBagType()) {
+            return false;
+        }
+        String format = value.getFormat();
+        if (format == null) {
+            return false;
+        }
+        // All item types support the reference format.
+        if (format.equals("reference")) {
+            return true;
+        }
+        Set<String> typeFormats = STANDARD_TYPE_FORMATS.get(mName);
+        return typeFormats != null && typeFormats.contains(format);
+    }
+
     @Override
     public String toString() {
-        return String.format("ResTypeSpec{pkg=%s, id=0x%02x, name=%s}",
-            mPackage, mId, mName);
+        return String.format("ResTypeSpec{pkg=%s, id=0x%02x, name=%s}", mPackage, mId, mName);
     }
 
     @Override
@@ -67,9 +101,9 @@ public class ResTypeSpec {
         }
         if (obj instanceof ResTypeSpec) {
             ResTypeSpec other = (ResTypeSpec) obj;
-            return Objects.equals(mPackage, other.mPackage)
-                    && mId == other.mId
-                    && Objects.equals(mName, other.mName);
+            return mPackage.equals(other.mPackage)
+                && mId == other.mId
+                && mName.equals(other.mName);
         }
         return false;
     }

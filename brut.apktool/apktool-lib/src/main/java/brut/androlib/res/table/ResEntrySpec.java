@@ -16,84 +16,69 @@
  */
 package brut.androlib.res.table;
 
-import com.google.common.collect.Sets;
-
 import java.util.Objects;
-import java.util.Set;
 
 public class ResEntrySpec {
-    private static final Set<String> INVALID_ENTRY_NAMES = Sets.newHashSet(
-        "0_resource_name_obfuscated", // #3067
-        "(name removed)" // #2940
-    );
-
     public static final String DUMMY_PREFIX = "APKTOOL_DUMMY_";
-    public static final String MISSING_PREFIX = "APKTOOL_MISSING_";
     public static final String RENAMED_PREFIX = "APKTOOL_RENAMED_";
 
     private final ResTypeSpec mTypeSpec;
-    private final ResId mId;
+    private final int mId;
+    private final ResId mResId;
     private final String mName;
 
-    public ResEntrySpec(ResTypeSpec typeSpec, ResId id, String name) {
-        assert typeSpec.getPackage().getId() == id.getPackageId();
-        assert typeSpec.getId() == id.getTypeId();
+    public ResEntrySpec(ResTypeSpec typeSpec, int id, String name) {
+        assert typeSpec != null && id >= 0 && name != null;
         mTypeSpec = typeSpec;
         mId = id;
-        // Some apps had their entry names collapsed to a single value in
-        // the key string pool. Rename to avoid duplicates.
-        if (name == null || name.isEmpty() || INVALID_ENTRY_NAMES.contains(name)) {
-            mName = RENAMED_PREFIX + id;
-        } else {
-            mName = name;
-        }
+        mResId = ResId.of(typeSpec.getPackage().getId(), typeSpec.getId(), id);
+        // Some apps had their entry names obfuscated or collapsed to a single value in the key string pool.
+        mName = isValidEntryName(name) ? name : RENAMED_PREFIX + mResId;
     }
 
-    public ResTypeSpec getTypeSpec() {
-        return mTypeSpec;
+    private static boolean isValidEntryName(String name) {
+        // Must not be empty.
+        int len = name.length();
+        if (len == 0) {
+            return false;
+        }
+        // Must start with a valid Java identifier start character.
+        if (!Character.isJavaIdentifierStart(name.charAt(0))) {
+            return false;
+        }
+        // The rest must be valid Java identifier part characters or any of the whitelisted special characters.
+        for (int i = 1; i < len; i++) {
+            char ch = name.charAt(i);
+            if (!Character.isJavaIdentifierPart(ch) && ch != '.' && ch != '-') {
+                return false;
+            }
+        }
+        return true;
     }
 
     public ResPackage getPackage() {
         return mTypeSpec.getPackage();
     }
 
-    public String getTypeName() {
-        return mTypeSpec.getName();
+    public ResTypeSpec getTypeSpec() {
+        return mTypeSpec;
     }
 
-    public ResId getId() {
+    public int getId() {
         return mId;
+    }
+
+    public ResId getResId() {
+        return mResId;
     }
 
     public String getName() {
         return mName;
     }
 
-    public String getFullName(ResPackage relativeToPackage, boolean excludeType) {
-        return getFullName(getPackage() == relativeToPackage, excludeType);
-    }
-
-    public String getFullName(boolean excludePackage, boolean excludeType) {
-        return (excludePackage ? "" : getPackage().getName() + ":")
-                + (excludeType ? "" : getTypeName() + "/") + mName;
-    }
-
-    public boolean isDummy() {
-        return mName.startsWith(DUMMY_PREFIX);
-    }
-
-    public boolean isMissing() {
-        return mName.startsWith(MISSING_PREFIX);
-    }
-
-    public boolean isRenamed() {
-        return mName.startsWith(RENAMED_PREFIX);
-    }
-
     @Override
     public String toString() {
-        return String.format("ResEntrySpec{typeSpec=%s, id=%s, name=%s}",
-            mTypeSpec, mId, mName);
+        return String.format("ResEntrySpec{typeSpec=%s, id=0x%04x, name=%s}", mTypeSpec, mId, mName);
     }
 
     @Override
@@ -103,9 +88,9 @@ public class ResEntrySpec {
         }
         if (obj instanceof ResEntrySpec) {
             ResEntrySpec other = (ResEntrySpec) obj;
-            return Objects.equals(mTypeSpec, other.mTypeSpec)
-                    && Objects.equals(mId, other.mId)
-                    && Objects.equals(mName, other.mName);
+            return mTypeSpec.equals(other.mTypeSpec)
+                && mId == other.mId
+                && mName.equals(other.mName);
         }
         return false;
     }
